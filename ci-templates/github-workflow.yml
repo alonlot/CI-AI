@@ -1,0 +1,53 @@
+# Copy to .github/workflows/ai-review.yml in the repo you want reviewed.
+#
+# Required repo secret: ANTHROPIC_API_KEY
+# GITHUB_TOKEN is provided automatically (needs pull-requests: write).
+
+name: AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/YOUR_ORG/ai-review:latest   # image built from this repo's Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # full history so merge-base works
+      - name: Run AI review
+        run: python3 -m ai_review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # AI_REVIEW_MODEL: claude-opus-4-8
+          # AI_REVIEW_SKILLS_DIRS: ci/extra-skills
+          # AI_REVIEW_IGNORE: "*.golden,testdata/"
+          # AI_REVIEW_VERIFY: "0"       # skip the false-positive verification pass
+          # AI_REVIEW_FAIL_ON: high     # merge gate — also remove continue-on-error
+          # AI_REVIEW_UNRESTRICTED: "1"
+        continue-on-error: true   # remove this if you use AI_REVIEW_FAIL_ON as a gate
+
+  # Diff-only skill lint: no repo agent, only needs ANTHROPIC_API_KEY —
+  # checks the diff against the skill rule files, fails on violations.
+  smart-lint:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/YOUR_ORG/ai-review:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run smart lint
+        run: python3 -m smart_lint
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # SMART_LINT_SKILLS_DIRS: ci/lint-skills
+          # SMART_LINT_WARN_ONLY: "1"

@@ -1,0 +1,45 @@
+# Include this from your project's .gitlab-ci.yml, or copy the job.
+#
+# Required CI/CD variables (Settings -> CI/CD -> Variables):
+#   ANTHROPIC_API_KEY  (masked)
+#   GITLAB_TOKEN       (project access token with `api` scope, masked)
+#
+# Build & push the image first:
+#   docker build -t $CI_REGISTRY_IMAGE/ai-review:latest .
+#   docker push $CI_REGISTRY_IMAGE/ai-review:latest
+
+ai-review:
+  image: $CI_REGISTRY_IMAGE/ai-review:latest
+  stage: test
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  variables:
+    GIT_DEPTH: "0"          # full history so merge-base works
+  # optional knobs:
+  #   AI_REVIEW_MODEL: "claude-opus-4-8"
+  #   AI_REVIEW_MAX_FINDINGS: "15"
+  #   AI_REVIEW_SKILLS_DIRS: "ci/extra-skills"
+  #   AI_REVIEW_IGNORE: "*.golden,testdata/"
+  #   AI_REVIEW_VERIFY: "0"         # skip the false-positive verification pass
+  #   AI_REVIEW_FAIL_ON: "high"     # merge gate — also remove allow_failure below
+  #   AI_REVIEW_UNRESTRICTED: "1"   # let the agent run arbitrary commands
+  #   AI_REVIEW_DRY_RUN: "1"        # print instead of posting
+  script:
+    - python3 -m ai_review
+  allow_failure: true       # remove this if you use AI_REVIEW_FAIL_ON as a gate
+
+# Diff-only skill lint: no repo agent, no GITLAB_TOKEN needed — checks the
+# diff against the skill rule files and FAILS the job on violations.
+smart-lint:
+  image: $CI_REGISTRY_IMAGE/ai-review:latest
+  stage: test
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  variables:
+    GIT_DEPTH: "0"
+  # optional knobs:
+  #   SMART_LINT_MODEL: "claude-opus-4-8"
+  #   SMART_LINT_SKILLS_DIRS: "ci/lint-skills"
+  #   SMART_LINT_WARN_ONLY: "1"   # report but never fail
+  script:
+    - python3 -m smart_lint

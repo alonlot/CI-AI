@@ -12,6 +12,9 @@ class Config:
     def __init__(self) -> None:
         self.model = os.environ.get("SMART_LINT_MODEL", "claude-opus-4-8")
         self.max_tokens = int(os.environ.get("SMART_LINT_MAX_TOKENS", "16000"))
+        # Large diffs are linted in per-file batches of at most this many
+        # characters per API call — nothing gets truncated or dropped.
+        self.batch_chars = int(os.environ.get("SMART_LINT_BATCH_CHARS", "200000"))
 
         # Skill discovery (same mechanism/attrs as ai_review.skills expects)
         self.builtin_skills_dir = os.environ.get(

@@ -45,11 +45,11 @@ def changed_files(repo_dir: str, base_sha: str) -> list[str]:
 
 
 def diff_text(repo_dir: str, base_sha: str, files: list[str] | None = None,
-              max_chars: int = 300_000) -> str:
+              max_chars: int | None = 300_000) -> str:
     args = ["diff", "--unified=5", f"{base_sha}..HEAD"]
     if files:
         args += ["--", *files]
     out = _git(args, cwd=repo_dir)
-    if len(out) > max_chars:
+    if max_chars is not None and len(out) > max_chars:
         out = out[:max_chars] + "\n\n[... diff truncated for length ...]"
     return out

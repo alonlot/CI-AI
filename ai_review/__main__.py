@@ -14,7 +14,8 @@ Flow:
 import sys
 
 from . import diffmap, gitops, ignore
-from .agent import ReviewResult, build_prompt, run_agent, verify_findings
+from .agent import (ReviewResult, build_prompt, render_existing_feedback,
+                    run_agent, verify_findings)
 from .config import Config
 from .providers import detect_provider
 from .skills import load_skills, render_skills
@@ -50,7 +51,16 @@ def main() -> int:
     skills = load_skills(cfg)
     print(f"[ai-review] skills loaded: {', '.join(n for n, _ in skills) or '(none)'}")
 
-    prompt = build_prompt(cfg, base_sha, head, files, diff, render_skills(skills))
+    feedback_block = ""
+    if cfg.context_notes:
+        existing = provider.existing_feedback()
+        feedback_block = render_existing_feedback(existing)
+        if existing:
+            print(f"[ai-review] {len(existing)} existing comment(s) given to "
+                  f"the reviewer as do-not-repeat context")
+
+    prompt = build_prompt(cfg, base_sha, head, files, diff,
+                          render_skills(skills), feedback_block)
     if ctx.title:
         prompt = (f"Merge request title: {ctx.title}\n"
                   f"Description:\n{ctx.description}\n\n{prompt}")

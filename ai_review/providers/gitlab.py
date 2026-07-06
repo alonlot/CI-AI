@@ -60,6 +60,25 @@ class GitLabProvider(Provider):
             description=mr.get("description") or "",
         )
 
+    def existing_feedback(self) -> list[dict]:
+        feedback: list[dict] = []
+        for disc in self._paged_get(self._mr_url("/discussions")):
+            for note in disc.get("notes", []):
+                if note.get("system"):
+                    continue  # "changed the description", pipeline events, ...
+                body = (note.get("body") or "").strip()
+                if not body:
+                    continue
+                position = note.get("position") or {}
+                feedback.append({
+                    "author": (note.get("author") or {}).get("username", "?"),
+                    "body": body,
+                    "path": position.get("new_path"),
+                    "line": position.get("new_line"),
+                    "resolved": bool(note.get("resolved")),
+                })
+        return feedback
+
     def _existing_finding_keys(self) -> set[str]:
         keys: set[str] = set()
         for disc in self._paged_get(self._mr_url("/discussions")):

@@ -39,6 +39,10 @@ class Config:
 
         # Review behavior
         self.max_findings = int(os.environ.get("AI_REVIEW_MAX_FINDINGS", "15"))
+        # Feed the MR's existing comments to the reviewer so it doesn't
+        # repeat points already made (by humans or previous runs). On by
+        # default; disable with AI_REVIEW_CONTEXT_NOTES=0.
+        self.context_notes = os.environ.get("AI_REVIEW_CONTEXT_NOTES", "1") == "1"
         self.repo_dir = os.environ.get("AI_REVIEW_REPO_DIR", os.getcwd())
         # Second agent pass that tries to refute each finding (fewer false
         # positives, roughly doubles agent cost). On by default.

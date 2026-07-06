@@ -48,6 +48,15 @@ class Provider(ABC):
     def context(self) -> MergeRequestContext:
         """Read the MR/PR metadata from the CI environment / API."""
 
+    def existing_feedback(self) -> list[dict]:
+        """Comments already on the MR/PR (human and bot), so the reviewer
+        can avoid repeating points that were already made.
+
+        Each item: {"author": str, "body": str, "path": str|None,
+                    "line": int|None, "resolved": bool}
+        """
+        return []
+
     @abstractmethod
     def post_review(self, summary_md: str, findings: list[dict],
                     head_sha: str) -> None:

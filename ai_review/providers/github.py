@@ -69,6 +69,32 @@ class GitHubProvider(Provider):
             description=pr.get("body") or "",
         )
 
+    def existing_feedback(self) -> list[dict]:
+        feedback: list[dict] = []
+        inline_url = f"{self.api}/repos/{self.repo}/pulls/{self.pr_number}/comments"
+        for c in self._paged_get(inline_url):
+            body = (c.get("body") or "").strip()
+            if body:
+                feedback.append({
+                    "author": (c.get("user") or {}).get("login", "?"),
+                    "body": body,
+                    "path": c.get("path"),
+                    "line": c.get("line") or c.get("original_line"),
+                    "resolved": False,
+                })
+        issue_url = f"{self.api}/repos/{self.repo}/issues/{self.pr_number}/comments"
+        for c in self._paged_get(issue_url):
+            body = (c.get("body") or "").strip()
+            if body:
+                feedback.append({
+                    "author": (c.get("user") or {}).get("login", "?"),
+                    "body": body,
+                    "path": None,
+                    "line": None,
+                    "resolved": False,
+                })
+        return feedback
+
     def _existing_finding_keys(self) -> set[str]:
         url = f"{self.api}/repos/{self.repo}/pulls/{self.pr_number}/comments"
         keys: set[str] = set()

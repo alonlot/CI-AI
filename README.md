@@ -93,6 +93,15 @@ from the diff by default (see `ai_review/ignore.py`). Extend per repo with
 directory anywhere in the path), or per pipeline with `AI_REVIEW_IGNORE`
 (comma-separated globs).
 
+## The reviewer sees existing MR discussion
+
+Before reviewing, the job fetches the comments already on the MR — from
+humans **and** previous bot runs — and gives them to the reviewer as
+do-not-repeat context. A point a colleague already made (even worded
+differently, even on a nearby line) is skipped; resolved threads are only
+re-raised if the current code clearly still has the problem. Disable with
+`AI_REVIEW_CONTEXT_NOTES=0`.
+
 ## Re-runs don't spam the MR
 
 Every posted comment carries a hidden marker. On the next pipeline run the
@@ -183,6 +192,7 @@ finding is at/above that severity — and remove `allow_failure: true` /
 | `AI_REVIEW_IGNORE` | — | extra ignore globs, comma-separated |
 | `AI_REVIEW_REPO_IGNORE_FILE` | `.ai-review/ignore` | in-repo ignore file |
 | `AI_REVIEW_VERIFY` | on | `0` → skip the finding-verification pass |
+| `AI_REVIEW_CONTEXT_NOTES` | on | `0` → don't feed existing MR comments to the reviewer |
 | `AI_REVIEW_FAIL_ON` | — | `low`/`medium`/`high` → merge gate (see above) |
 | `AI_REVIEW_UNRESTRICTED` | off | `1` → run agent with `--dangerously-skip-permissions` |
 | `AI_REVIEW_DRY_RUN` | off | `1` → print the review instead of posting |

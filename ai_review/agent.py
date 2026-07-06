@@ -31,6 +31,8 @@ The diff (base {base_sha} -> HEAD {head_sha}):
 
 {skills}
 
+{existing_feedback}
+
 Review guidance:
 - Focus on real problems: bugs, broken edge cases, security issues, race
   conditions, API misuse, violations of the skills above, and significant
@@ -94,14 +96,58 @@ class ReviewResult:
 
 
 def build_prompt(cfg: Config, base_sha: str, head: str, files: list[str],
-                 diff: str, skills_block: str) -> str:
+                 diff: str, skills_block: str,
+                 feedback_block: str = "") -> str:
     return REVIEW_INSTRUCTIONS.format(
         changed_files="\n".join(f"- {f}" for f in files) or "(none)",
         base_sha=base_sha[:12],
         head_sha=head[:12],
         diff=diff,
         skills=skills_block,
+        existing_feedback=feedback_block,
         max_findings=cfg.max_findings,
+    )
+
+
+MARKER_COMMENT_RE = re.compile(r"<!--.*?-->\s*", re.DOTALL)
+
+
+def render_existing_feedback(feedback: list[dict], max_items: int = 80,
+                             max_body_chars: int = 1200,
+                             max_total_chars: int = 30_000) -> str:
+    """Render already-posted MR/PR comments for the prompt, with a
+    do-not-repeat instruction. Returns "" when there is nothing."""
+    items = []
+    for f in feedback:
+        body = MARKER_COMMENT_RE.sub("", f["body"]).strip()
+        if not body:
+            continue
+        if len(body) > max_body_chars:
+            body = body[:max_body_chars] + " [...]"
+        where = ""
+        if f.get("path"):
+            where = f' path="{f["path"]}"'
+            if f.get("line"):
+                where += f' line="{f["line"]}"'
+        resolved = ' resolved="true"' if f.get("resolved") else ""
+        items.append(f'<comment author="{f["author"]}"{where}{resolved}>\n'
+                     f"{body}\n</comment>")
+    if not items:
+        return ""
+    # keep the most recent ones when over budget
+    items = items[-max_items:]
+    while items and sum(len(i) for i in items) > max_total_chars:
+        items.pop(0)
+
+    return (
+        "# Feedback already posted on this merge request\n"
+        "The comments below (from humans and previous automated reviews) are "
+        "already on the MR. Do NOT repeat them: skip any finding that "
+        "substantially makes the same point, even if you would word it "
+        "differently or attach it to a nearby line. Comments marked "
+        "resolved=\"true\" were addressed — only re-raise one if the current "
+        "code clearly still has the problem. Your job is to add NEW insight "
+        "only.\n\n" + "\n\n".join(items)
     )
 
 
